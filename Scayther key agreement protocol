@@ -1,0 +1,64 @@
+// Define text types and hash functions
+usertype text;
+hashfunction H, exp;
+const SUCC:text;
+//Define the protocol tongyu, which contains three roles: DA, DB and CA.
+protocol tongyu(DA, DB, CA) {
+
+	// DA Role Definition
+	role DA{
+		fresh Cert: Nonce;
+		send_1(DA, DB, {Cert}pk(DB));
+		fresh rDA, P, S1: Nonce;
+		var rDB, S2: Nonce;
+		var K1: SessionKey;
+		recv_4(DB, DA, {rDB, exp(P, S2)}pk(DA));
+		send_5(DA, DB, {rDA, exp(P, S1)}pk(DB));
+		// Verify tant the session key K1 matches
+		match(K1, H(exp(rDA, exp(P, S2)), exp(rDB, exp(P, S1)), exp(S2, exp(P, S1))));
+			claim(DA, Secret, {Cert}pk(DB));
+			claim(DA, Secret, {rDB, exp(P, S2)}pk(DA));
+			claim(DA, Secret, {rDB, exp(P, S1)}pk(DB));
+				claim(DA, Secret, K1);
+				claim(DA, Alive);
+				claim(DA, Weakagree);
+				claim(DA, Niagree);
+				claim(DA, Nisynch);
+		// Authentication phase end
+	}
+	// DB Role Definition
+	role DB {
+
+		fresh a1: Nonce;
+		var Cert: Nonce;
+		// Authentication phase begin
+		recv_1(DA, DB, {Cert}pk(DB));
+		send_2(DB, CA, {Cert, a1}pk(CA));
+		var rDA, S1: Nonce;
+		fresh rDB, S2, P: Nonce;
+		var K1: SessionKey;
+		recv_3(CA, DB, SUCC);
+		send_4(DB, DA, {rDB, exp(P, S2)}pk(DA));
+		recv_5(DA, DB, {rDA, exp(P, S1)}pk(DB));
+		// Verify that the session key K1 matches
+			match(K1, H(exp(rDA, exp(P, S2)), exp(rDB, exp(P, S1)), exp(S2, exp(P, S1))));
+		send_6(DB, CA, K1);
+				claim(DB, Secret, {rDB, exp(P, S2)}pk(DA));
+				claim(DB, Secret, { exp(P, S1)}pk(DB));
+				claim(DB, Secret, K1);
+				claim(DB, Alive);
+				claim(DB, Weakagree);
+				claim(DB, Niagree);
+				claim(DB, Nisynch);
+		// Authentication phase end
+	}
+
+	// CA Role Definition
+	role CA {
+		// Authentication phase begin
+		fresh Cert, a1: Nonce;
+		recv_2(DB, CA, {Cert, a1}pk(CA));
+		send_3(CA, DB, SUCC);
+		//  Authentication phase end
+	}
+}
