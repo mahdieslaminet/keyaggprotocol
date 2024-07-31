@@ -1,0 +1,76 @@
+name: keyaggprotocol
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build project
+        run: |
+          # Replace with build command if necessary
+          echo "Building project..."
+
+      - name: Create Release assets
+        run: |
+          # Create release assets, e.g., a zip archive of the project
+          zip -r project-release.zip .
+
+      - name: Upload Release assets
+        uses: actions/upload-artifact@v2
+        with:
+          name: project-release
+          path: project-release.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Download Release assets
+        uses: actions/download-artifact@v2
+        with:
+          name: project-release
+          path: ./release
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+          body: |
+            ## Changes
+            - List of changes in this release.
+
+      - name: Upload Release to GitHub
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_GitHub_release.outputs.upload_url }}
+          asset_path: ./release/project-release.zip
+          asset_name: project-release.zip
+          asset_content_type: application/zip
